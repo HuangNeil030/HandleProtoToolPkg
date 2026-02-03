@@ -1,0 +1,35 @@
+[Defines]
+  INF_VERSION                    = 0x00010019
+  BASE_NAME                      = HandleProtoTool
+  FILE_GUID                      = 7B8E4F6A-5E7E-4B17-B7D0-1C9C1D0C7B33
+  MODULE_TYPE                    = UEFI_APPLICATION
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = UefiMain
+
+[Sources]
+  HandleProtoTool.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+
+[LibraryClasses]
+  UefiApplicationEntryPoint
+  UefiLib
+  UefiBootServicesTableLib
+  MemoryAllocationLib
+  BaseLib
+  BaseMemoryLib
+  DevicePathLib
+
+[Protocols]
+  gEfiSimpleTextInProtocolGuid
+  gEfiSimpleTextOutProtocolGuid
+  gEfiGraphicsOutputProtocolGuid
+  gEfiDriverBindingProtocolGuid
+  gEfiComponentName2ProtocolGuid
+  gEfiSimpleFileSystemProtocolGuid
+  gEfiDevicePathProtocolGuid
+  gEfiLoadedImageProtocolGuid
+  gEfiPciIoProtocolGuid
+  gEfiPciRootBridgeIoProtocolGuid

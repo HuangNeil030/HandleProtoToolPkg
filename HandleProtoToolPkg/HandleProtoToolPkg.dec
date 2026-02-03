@@ -1,0 +1,5 @@
+[Defines]
+  DEC_SPECIFICATION              = 0x0001001A
+  PACKAGE_NAME                   = HandleProtoToolPkg
+  PACKAGE_GUID                   = 9C3EAA64-7A5E-4D41-A6A1-4E4A49F5C0D1
+  PACKAGE_VERSION                = 0.1
