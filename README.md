@@ -1,6 +1,4 @@
 # HandleProtoToolPkg
-以下給你一份「可直接貼到專案 README」的**函數使用方法筆記**（以你這支 HandleProtoTool.c 為主），內容包含：用途、呼叫方式、參數意義、常見錯誤碼、以及你專案裡怎麼用到它。
-
 ---
 
 # HandleProtoTool 函數使用筆記（README 版）
