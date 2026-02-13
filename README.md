@@ -263,10 +263,6 @@ UINTN Index = StrDecimalToUintn(In);
 * `ConvertDevicePathToText()` 回傳 `CHAR16*` → `FreePool()`
 
 ---
-
-如果你也要我把這份 README **再升級成「指令手冊」風格**（像 `help` 一樣：輸入示例、輸出示例、常見錯誤與解法），我可以直接把你 `HandleLog.txt` 的格式一起對齊成完整操作手冊。
-
----
 cd /d D:\BIOS\MyWorkSpace\edk2
 
 edksetup.bat Rebuild
