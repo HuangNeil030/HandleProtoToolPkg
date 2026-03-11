@@ -262,6 +262,168 @@ UINTN Index = StrDecimalToUintn(In);
 * `ProtocolsPerHandle()` 回傳 `EFI_GUID**` → `FreePool()`
 * `ConvertDevicePathToText()` 回傳 `CHAR16*` → `FreePool()`
 
+下面給你一份**TXT 版**的「系統架構 + 主選單流程 + 模組樹狀圖」，可以直接貼到 README（或筆記檔）。
+
+---
+
+# HandleProtoTool 系統架構總覽（TXT）
+
+## 1) 模組樹狀圖
+
+```
+HandleProtoTool (UEFI Application)
+│
+├─ Entry / Main Loop
+│  ├─ UefiMain()
+│  ├─ Menu()                     // 列印主選單
+│  ├─ ReadLine()                 // 讀取使用者輸入（Enter/Backspace）
+│  └─ WaitAnyKey()               // 暫停等待任意鍵
+│
+├─ Core Services (Boot Services Wrappers)
+│  ├─ GetAllHandles()            // LocateHandleBuffer(AllHandles)
+│  └─ FindHandleIndexInAll()     // 將 match handle 反查回 AllHandles 的真實 index(DEC)
+│
+├─ Dump Engine (TXT Style Output)
+│  ├─ DumpOneHandleTxtStyle()    // 印 Handle block：Handle / DevicePath / Protocols
+│  ├─ PrintSeparator()           // 分隔線
+│  ├─ PrintDevicePathOrNone()    // DevicePathFromHandle + ConvertDevicePathToText
+│  └─ GuidToPrettyName()         // GUID -> 已知名字（不在表內則 Unknown GUID）
+│
+├─ Search Functions (Menu Actions)
+│  ├─ DoSearchAllHandles()       // 功能 1：全列
+│  ├─ DoSearchByProtocolGuid()   // 功能 2：GUID 搜尋（ByProtocol + 反查真實 index）
+│  ├─ DoSearchByProtocolName()   // 功能 3：Name 搜尋（Name->GUID + ByProtocol + 反查真實 index）
+│  └─ DoSearchByHandleNumber()   // 功能 4：Handle Number(DEC) 指定查詢
+│
+├─ Protocol Name Database
+│  ├─ mKnownProtocols[]          // Name <-> GUID 對照表（可擴充）
+│  └─ FindProtocolByName()       // Name -> GUID
+│
+└─ Utilities
+   ├─ ParseGuidString()          // GUID string -> EFI_GUID
+   ├─ ParseHexN()/HexVal()       // GUID parser 子函式
+   └─ (可擴充) TrimSpaces()      // 若需去除輸入前後空白
+```
+
+---
+
+## 2) 系統架構與資料流（System Architecture & Data Flow）
+
+```
+            ┌─────────────────────────────────────────────┐
+            │                 UEFI Shell                  │
+            │   User runs: fsX:\HandleProtoTool.efi        │
+            └──────────────────────┬──────────────────────┘
+                                   │
+                                   v
+┌─────────────────────────────────────────────────────────────┐
+│                 HandleProtoTool (Application)               │
+│                                                             │
+│  ┌──────────────┐      ┌────────────────────────────────┐  │
+│  │ UI / Console  │      │  Core: Boot Services (gBS)     │  │
+│  │ - Menu()      │      │  - LocateHandleBuffer()        │  │
+│  │ - ReadLine()  │ ---> │  - ProtocolsPerHandle()        │  │
+│  │ - WaitAnyKey()│      │  - (optional) HandleProtocol() │  │
+│  └───────┬──────┘      └──────────────┬─────────────────┘  │
+│          │                              │                    │
+│          v                              v                    │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │ Dump Engine (TXT Style)                                │  │
+│  │ - DevicePathFromHandle() + ConvertDevicePathToText()    │  │
+│  │ - PrintSeparator / DumpOneHandleTxtStyle()              │  │
+│  │ - GuidToPrettyName() (mKnownProtocols)                  │  │
+│  └────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 關鍵設計點（Handle Number 一致性）
+
+* `AllHandles[]`：由 `LocateHandleBuffer(AllHandles)` 得到
+
+  * **AllHandles 的 index = 真實 Handle Number(DEC)**
+* `ByProtocol` 搜尋結果 `Handles[]`：只是 match list
+
+  * 所以需要 `FindHandleIndexInAll()` 反查出真實 index，才能印出一致的 Handle Number。
+
+---
+
+## 3) 主選單流程（System Menu Flow）
+
+```
+[Start] UefiMain()
+   |
+   v
+[Menu()]
+  1. Search All Handles
+  2. Search Specific Handles by Protocol GUID
+  3. Search Specific Handles by Protocol Name
+  4. Search Specific Handles by Handle Number (DEC)
+  5. Quit Program
+   |
+   v
+[ReadLine() -> Selection]
+   |
+   +--> '1' DoSearchAllHandles()
+   |       |
+   |       v
+   |    GetAllHandles()  (LocateHandleBuffer(AllHandles))
+   |       |
+   |       v
+   |    for i in AllCount:
+   |      DumpOneHandleTxtStyle(AllHandles[i], i)
+   |       |
+   |       v
+   |    Print "Dump Finished"
+   |
+   +--> '2' DoSearchByProtocolGuid()
+   |       |
+   |       v
+   |    Read GUID string -> ParseGuidString()
+   |       |
+   |       v
+   |    GetAllHandles() -> AllHandles[] (建立真實 index 表)
+   |       |
+   |       v
+   |    LocateHandleBuffer(ByProtocol, Guid) -> MatchedHandles[]
+   |       |
+   |       v
+   |    for each H in MatchedHandles:
+   |      RealIndex = FindHandleIndexInAll(H, AllHandles)
+   |      DumpOneHandleTxtStyle(H, RealIndex)
+   |
+   +--> '3' DoSearchByProtocolName()
+   |       |
+   |       v
+   |    Read Name -> FindProtocolByName(Name) -> Guid
+   |       |
+   |       v
+   |    (後續流程同 '2')
+   |
+   +--> '4' DoSearchByHandleNumber()
+   |       |
+   |       v
+   |    GetAllHandles() -> AllHandles[]
+   |       |
+   |       v
+   |    Read DEC index -> StrDecimalToUintn()
+   |       |
+   |       v
+   |    DumpOneHandleTxtStyle(AllHandles[Index], Index)
+   |
+   +--> '5' Quit (return EFI_SUCCESS)
+   |
+   v
+[Press any key] -> WaitAnyKey() -> Back to Menu
+```
+
+---
+
+如果你希望我再補一份「Mermaid 版本」（可貼 GitHub 自動渲染）我也能直接給你：
+
+* `flowchart TD` 主選單流程圖
+* `mindmap` 模組樹狀圖
+
+
 ---
 cd /d D:\BIOS\MyWorkSpace\edk2
 
